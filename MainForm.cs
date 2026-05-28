@@ -38,7 +38,7 @@ public class MainForm : Form
     private TabControl _tabControl = null!;
     private Label _lblRange = null!;
 
-    private const int SliderResolution = 10000;
+    private const int BrightnessScale = 1000;
     private const string AppName = "HdrBrightness";
 
     private double CurrentMinBrightness => _settings.MinBrightness;
@@ -229,10 +229,10 @@ public class MainForm : Form
         var rowSlider = NewFlow();
         _trackBar = new TrackBar
         {
-            Minimum = 0,
-            Maximum = SliderResolution,
-            Value = BrightnessToSlider(1.0),
-            TickFrequency = SliderResolution / 10,
+            Minimum = (int)(CurrentMinBrightness * BrightnessScale),
+            Maximum = (int)(CurrentMaxBrightness * BrightnessScale),
+            Value = (int)(CurrentDefaultBrightness * BrightnessScale),
+            TickFrequency = (int)((CurrentMaxBrightness - CurrentMinBrightness) * BrightnessScale / 10),
             Width = 460,
             Anchor = AnchorStyles.Left | AnchorStyles.Right
         };
@@ -304,11 +304,11 @@ public class MainForm : Form
         };
         _nudExact = new NumericUpDown
         {
-            Minimum = 1,
-            Maximum = 1000,
-            Value = 10,
-            DecimalPlaces = 1,
-            Increment = 1,
+            Minimum = 0.1m,
+            Maximum = 100.0m,
+            Value = 1.0m,
+            DecimalPlaces = 2,
+            Increment = 0.1m,
             Size = new Size(80, 26),
             Margin = new Padding(2, 2, 4, 2)
         };
@@ -320,8 +320,7 @@ public class MainForm : Form
         };
         _btnSetExact.Click += (s, e) =>
         {
-            double val = (double)_nudExact.Value / 10.0;
-            SetBrightness(val);
+            SetBrightness((double)_nudExact.Value);
         };
         _lblRange = new Label
         {
@@ -393,9 +392,9 @@ public class MainForm : Form
         var lblMin = new Label { Text = "最低亮度：", AutoSize = true, Margin = new Padding(2, 6, 2, 2) };
         _nudMinBrightness = new NumericUpDown
         {
-            Minimum = 1, Maximum = 500,
-            Value = (decimal)_settings.MinBrightness * 10,
-            DecimalPlaces = 1, Increment = 1,
+            Minimum = 0.1m, Maximum = 50.0m,
+            Value = (decimal)_settings.MinBrightness,
+            DecimalPlaces = 2, Increment = 0.1m,
             Size = new Size(80, 26)
         };
         var lblMinNits = new Label
@@ -411,9 +410,9 @@ public class MainForm : Form
         var lblMax = new Label { Text = "最高亮度：", AutoSize = true, Margin = new Padding(2, 6, 2, 2) };
         _nudMaxBrightness = new NumericUpDown
         {
-            Minimum = 10, Maximum = 1000,
-            Value = (decimal)_settings.MaxBrightness * 10,
-            DecimalPlaces = 1, Increment = 1,
+            Minimum = 1.0m, Maximum = 100.0m,
+            Value = (decimal)_settings.MaxBrightness,
+            DecimalPlaces = 2, Increment = 0.1m,
             Size = new Size(80, 26)
         };
         var lblMaxNits = new Label
@@ -429,9 +428,9 @@ public class MainForm : Form
         var lblDefault = new Label { Text = "默认亮度：", AutoSize = true, Margin = new Padding(2, 6, 2, 2) };
         _nudDefaultBrightness = new NumericUpDown
         {
-            Minimum = 1, Maximum = 1000,
-            Value = (decimal)_settings.DefaultBrightness * 10,
-            DecimalPlaces = 1, Increment = 1,
+            Minimum = 0.1m, Maximum = 100.0m,
+            Value = (decimal)_settings.DefaultBrightness,
+            DecimalPlaces = 2, Increment = 0.1m,
             Size = new Size(80, 26)
         };
         var lblDefaultNits = new Label
@@ -544,9 +543,9 @@ public class MainForm : Form
 
     private void ApplyRange(object? sender, EventArgs e)
     {
-        double newMin = (double)_nudMinBrightness.Value / 10.0;
-        double newMax = (double)_nudMaxBrightness.Value / 10.0;
-        double newDefault = (double)_nudDefaultBrightness.Value / 10.0;
+        double newMin = (double)_nudMinBrightness.Value;
+        double newMax = (double)_nudMaxBrightness.Value;
+        double newDefault = (double)_nudDefaultBrightness.Value;
 
         if (newMin >= newMax)
         {
@@ -565,13 +564,17 @@ public class MainForm : Form
         _settings.DefaultBrightness = newDefault;
         _settings.Save();
 
-        _nudExact.Minimum = (decimal)newMin * 10;
-        _nudExact.Maximum = (decimal)newMax * 10;
+        _nudExact.Minimum = (decimal)newMin;
+        _nudExact.Maximum = (decimal)newMax;
 
         _btnMin.Text = $"最低({newMin:F1})";
         _btnDefault.Text = $"默认({newDefault:F1})";
         _btnMax.Text = $"最高({newMax:F1})";
         _lblRange.Text = $"范围：{newMin:F1} ~ {newMax:F1}";
+
+        _trackBar.Minimum = (int)(newMin * BrightnessScale);
+        _trackBar.Maximum = (int)(newMax * BrightnessScale);
+        _trackBar.TickFrequency = (int)((newMax - newMin) * BrightnessScale / 10);
 
         double currentBrightness = SliderToBrightness(_trackBar.Value);
         currentBrightness = Math.Clamp(currentBrightness, newMin, newMax);
@@ -618,7 +621,7 @@ public class MainForm : Form
         _lblValue.Text = FormatBrightness(brightness);
         _lblNits.Text = FormatNits(brightness);
 
-        var rounded = (decimal)Math.Round(brightness, 1) * 10;
+        var rounded = (decimal)Math.Round(brightness, 2);
         if (rounded >= _nudExact.Minimum && rounded <= _nudExact.Maximum)
             _nudExact.Value = rounded;
 
@@ -635,7 +638,7 @@ public class MainForm : Form
         _lblValue.Text = FormatBrightness(brightness);
         _lblNits.Text = FormatNits(brightness);
 
-        var rounded = (decimal)Math.Round(brightness, 1) * 10;
+        var rounded = (decimal)Math.Round(brightness, 2);
         if (rounded >= _nudExact.Minimum && rounded <= _nudExact.Maximum)
             _nudExact.Value = rounded;
 
@@ -651,7 +654,7 @@ public class MainForm : Form
         _lblValue.Text = FormatBrightness(brightness);
         _lblNits.Text = FormatNits(brightness);
 
-        var rounded = (decimal)Math.Round(brightness, 1) * 10;
+        var rounded = (decimal)Math.Round(brightness, 2);
         if (rounded >= _nudExact.Minimum && rounded <= _nudExact.Maximum)
             _nudExact.Value = rounded;
     }
@@ -684,16 +687,12 @@ public class MainForm : Form
 
     private int BrightnessToSlider(double brightness)
     {
-        double range = CurrentMaxBrightness - CurrentMinBrightness;
-        if (range <= 0) return 0;
-        double ratio = (brightness - CurrentMinBrightness) / range;
-        return (int)Math.Clamp(ratio * SliderResolution, 0, SliderResolution);
+        return (int)Math.Clamp(brightness * BrightnessScale, _trackBar.Minimum, _trackBar.Maximum);
     }
 
     private double SliderToBrightness(int sliderValue)
     {
-        double ratio = (double)sliderValue / SliderResolution;
-        return CurrentMinBrightness + ratio * (CurrentMaxBrightness - CurrentMinBrightness);
+        return (double)sliderValue / BrightnessScale;
     }
 
     private static string FormatBrightness(double brightness)
