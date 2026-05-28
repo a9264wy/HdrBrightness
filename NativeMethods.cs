@@ -17,31 +17,19 @@ public class NativeMethods
     public delegate int DwmpSDRToHDRBoostDelegate(IntPtr monitor, double brightness);
 
     [DllImport("user32.dll")]
-    public static extern bool EnumDisplayDevices(string? lpDevice, uint iDevNum, ref DISPLAY_DEVICE lpDisplayDevice, uint dwFlags);
-
-    [DllImport("user32.dll")]
     public static extern int GetDisplayConfigBufferSizes(uint queryFlags, out uint numPathArrayElements, out uint numModeInfoArrayElements);
 
     [DllImport("user32.dll")]
     public static extern int QueryDisplayConfig(uint queryFlags, ref uint numPathArrayElements,
         [Out] DISPLAYCONFIG_PATH_INFO[] pathInfoArray, ref uint numModeInfoArrayElements,
-        [Out] DISPLAYCONFIG_MODE_INFO[] modeInfoArray, out DISPLAYCONFIG_TOPOLOGY_ID currentTopologyId);
+        [Out] DISPLAYCONFIG_MODE_INFO[] modeInfoArray, IntPtr currentTopologyId);
 
     [DllImport("user32.dll")]
     public static extern int DisplayConfigGetDeviceInfo(ref DISPLAYCONFIG_DEVICE_INFO_HEADER requestPacket);
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-    public struct DISPLAY_DEVICE
-    {
-        public int cb;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string DeviceName;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string DeviceString;
-        public int StateFlags;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string DeviceID;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string DeviceKey;
-    }
+    public const uint QDC_ONLY_ACTIVE_PATHS = 0x00000002;
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct DISPLAYCONFIG_PATH_INFO
     {
         public DISPLAYCONFIG_PATH_SOURCE_INFO sourceInfo;
@@ -49,7 +37,7 @@ public class NativeMethods
         public uint flags;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct DISPLAYCONFIG_PATH_SOURCE_INFO
     {
         public LUID adapterId;
@@ -58,53 +46,53 @@ public class NativeMethods
         public uint statusFlags;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct DISPLAYCONFIG_PATH_TARGET_INFO
     {
         public LUID adapterId;
         public uint id;
         public uint modeInfoIdx;
-        public DISPLAYCONFIG_VIDEO_OUTPUT_TECHNOLOGY outputTechnology;
-        public DISPLAYCONFIG_ROTATION rotation;
-        public DISPLAYCONFIG_SCALING scaling;
+        public uint outputTechnology;
+        public uint rotation;
+        public uint scaling;
         public DISPLAYCONFIG_RATIONAL refreshRate;
-        public DISPLAYCONFIG_SCANLINE_ORDERING scanLineOrdering;
-        public bool targetAvailable;
+        public uint scanLineOrdering;
+        public int targetAvailable;
         public uint statusFlags;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct DISPLAYCONFIG_MODE_INFO
     {
-        public DISPLAYCONFIG_MODE_INFO_TYPE infoType;
+        public uint infoType;
         public uint id;
         public LUID adapterId;
         public DISPLAYCONFIG_MODE_INFO_UNION modeInfo;
     }
 
-    [StructLayout(LayoutKind.Explicit)]
+    [StructLayout(LayoutKind.Explicit, Pack = 4)]
     public struct DISPLAYCONFIG_MODE_INFO_UNION
     {
         [FieldOffset(0)] public DISPLAYCONFIG_TARGET_MODE targetMode;
         [FieldOffset(0)] public DISPLAYCONFIG_SOURCE_MODE sourceMode;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct DISPLAYCONFIG_TARGET_MODE
     {
         public DISPLAYCONFIG_VIDEO_SIGNAL_INFO targetVideoSignalInfo;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct DISPLAYCONFIG_SOURCE_MODE
     {
         public uint width;
         public uint height;
-        public DISPLAYCONFIG_PIXELFORMAT pixelFormat;
+        public uint pixelFormat;
         public POINTL position;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct DISPLAYCONFIG_VIDEO_SIGNAL_INFO
     {
         public ulong pixelRate;
@@ -113,91 +101,49 @@ public class NativeMethods
         public DISPLAYCONFIG_2DREGION activeSize;
         public DISPLAYCONFIG_2DREGION totalSize;
         public uint videoStandard;
-        public DISPLAYCONFIG_SCANLINE_ORDERING scanLineOrdering;
+        public uint scanLineOrdering;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct LUID
     {
         public uint LowPart;
         public int HighPart;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct POINTL
     {
         public int x;
         public int y;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct DISPLAYCONFIG_RATIONAL
     {
         public uint Numerator;
         public uint Denominator;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct DISPLAYCONFIG_2DREGION
     {
         public uint cx;
         public uint cy;
     }
 
-    public enum DISPLAYCONFIG_VIDEO_OUTPUT_TECHNOLOGY : uint
-    {
-        INTERNAL = 0xFFFFFFFF,
-    }
-
-    public enum DISPLAYCONFIG_ROTATION : uint
-    {
-        IDENTITY = 1,
-    }
-
-    public enum DISPLAYCONFIG_SCALING : uint
-    {
-        IDENTITY = 1,
-    }
-
-    public enum DISPLAYCONFIG_SCANLINE_ORDERING : uint
-    {
-        UNSPECIFIED = 0,
-    }
-
-    public enum DISPLAYCONFIG_PIXELFORMAT : uint
-    {
-        _8BPP = 1,
-    }
-
-    public enum DISPLAYCONFIG_MODE_INFO_TYPE : uint
-    {
-        SOURCE = 1,
-        TARGET = 2,
-        DESKTOP_IMAGE_INFO = 3,
-    }
-
-    public enum DISPLAYCONFIG_TOPOLOGY_ID : uint
-    {
-        INTERNAL = 1,
-    }
-
-    public const uint QDC_ALL_PATHS = 0x00000001;
-
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct DISPLAYCONFIG_DEVICE_INFO_HEADER
     {
-        public DISPLAYCONFIG_DEVICE_INFO_TYPE type;
+        public uint type;
         public uint size;
         public LUID adapterId;
         public uint id;
     }
 
-    public enum DISPLAYCONFIG_DEVICE_INFO_TYPE : uint
-    {
-        GET_SDR_WHITE_LEVEL = 0x00000016,
-    }
+    public const uint DISPLAYCONFIG_DEVICE_INFO_GET_SDR_WHITE_LEVEL = 0x00000016;
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct DISPLAYCONFIG_SDR_WHITE_LEVEL
     {
         public DISPLAYCONFIG_DEVICE_INFO_HEADER header;
@@ -208,22 +154,22 @@ public class NativeMethods
     {
         try
         {
-            var hr = GetDisplayConfigBufferSizes(QDC_ALL_PATHS, out uint numPaths, out uint numModes);
-            if (hr != 0) return 1.0;
+            var hr = GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, out uint numPaths, out uint numModes);
+            if (hr != 0) return -1.0;
 
             var paths = new DISPLAYCONFIG_PATH_INFO[numPaths];
             var modes = new DISPLAYCONFIG_MODE_INFO[numModes];
 
-            hr = QueryDisplayConfig(QDC_ALL_PATHS, ref numPaths, paths, ref numModes, modes, out _);
-            if (hr != 0) return 1.0;
+            hr = QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, ref numPaths, paths, ref numModes, modes, IntPtr.Zero);
+            if (hr != 0) return -1.0;
 
             for (int i = 0; i < numPaths; i++)
             {
                 ref var path = ref paths[i];
-                if (path.targetInfo.targetAvailable)
+                if (path.targetInfo.targetAvailable != 0)
                 {
                     var sdrInfo = new DISPLAYCONFIG_SDR_WHITE_LEVEL();
-                    sdrInfo.header.type = DISPLAYCONFIG_DEVICE_INFO_TYPE.GET_SDR_WHITE_LEVEL;
+                    sdrInfo.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SDR_WHITE_LEVEL;
                     sdrInfo.header.size = (uint)Marshal.SizeOf<DISPLAYCONFIG_SDR_WHITE_LEVEL>();
                     sdrInfo.header.adapterId = path.targetInfo.adapterId;
                     sdrInfo.header.id = path.targetInfo.id;
@@ -237,6 +183,6 @@ public class NativeMethods
             }
         }
         catch { }
-        return 1.0;
+        return -1.0;
     }
 }

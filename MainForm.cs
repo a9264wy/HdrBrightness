@@ -5,6 +5,13 @@ namespace HdrBrightness;
 
 public class MainForm : Form
 {
+    [DllImport("user32.dll")]
+    static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+    private const uint WM_SYSCOMMAND = 0x0112;
+    private static readonly IntPtr SC_MONITORPOWER = (IntPtr)0xF170;
+    private static readonly IntPtr MONITOR_OFF = (IntPtr)2;
+
     private NativeMethods.DwmpSDRToHDRBoostDelegate? _changeBrightness;
     private IntPtr _primaryMonitor;
     private AppSettings _settings;
@@ -15,6 +22,7 @@ public class MainForm : Form
     private Button _btnMin = null!;
     private Button _btnMax = null!;
     private Button _btnDefault = null!;
+    private Button _btnScreenOff = null!;
     private NumericUpDown _nudExact = null!;
     private Button _btnSetExact = null!;
     private CheckBox _chkLive = null!;
@@ -30,7 +38,7 @@ public class MainForm : Form
     private TabControl _tabControl = null!;
     private Label _lblRange = null!;
 
-    private const int SliderResolution = 1000;
+    private const int SliderResolution = 10000;
     private const string AppName = "HdrBrightness";
 
     private double CurrentMinBrightness => _settings.MinBrightness;
@@ -77,8 +85,16 @@ public class MainForm : Form
     private void LoadCurrentBrightness()
     {
         double currentBrightness = NativeMethods.GetCurrentSdrWhiteLevel();
-        Log($"读取到当前 SDR 白色电平：{currentBrightness:F2} ({currentBrightness * 80:F0} nits)");
-        SetBrightnessSilent(currentBrightness);
+        if (currentBrightness > 0)
+        {
+            Log($"读取到当前 SDR 白色电平：{currentBrightness:F2} ({currentBrightness * 80:F0} nits)");
+            SetBrightnessSilent(currentBrightness);
+        }
+        else
+        {
+            Log($"无法读取当前 SDR 白色电平，使用默认值 {CurrentDefaultBrightness:F1}");
+            SetBrightnessSilent(CurrentDefaultBrightness);
+        }
     }
 
     private void InitializeTrayIcon()
@@ -89,6 +105,8 @@ public class MainForm : Form
         _trayMenu.Items.Add("最低亮度", null, (s, e) => SetBrightness(CurrentMinBrightness));
         _trayMenu.Items.Add("默认亮度", null, (s, e) => SetBrightness(CurrentDefaultBrightness));
         _trayMenu.Items.Add("最高亮度", null, (s, e) => SetBrightness(CurrentMaxBrightness));
+        _trayMenu.Items.Add(new ToolStripSeparator());
+        _trayMenu.Items.Add("一键息屏", null, (s, e) => TurnOffScreen());
         _trayMenu.Items.Add(new ToolStripSeparator());
         _trayMenu.Items.Add("退出", null, (s, e) => ExitApp());
 
@@ -116,11 +134,35 @@ public class MainForm : Form
         Application.Exit();
     }
 
+    private bool _screenOffPending;
+
+    private async void TurnOffScreen()
+    {
+        if (_screenOffPending) return;
+        _screenOffPending = true;
+        _btnScreenOff.Enabled = false;
+
+        Log("息屏倒计时：3秒后熄灭屏幕...");
+
+        for (int i = 3; i >= 1; i--)
+        {
+            _btnScreenOff.Text = $"{i}秒后息屏";
+            await Task.Delay(1000);
+        }
+
+        Log("执行息屏（不锁屏）");
+        SendMessage((IntPtr)0xFFFF, WM_SYSCOMMAND, SC_MONITORPOWER, MONITOR_OFF);
+
+        _btnScreenOff.Text = "息屏";
+        _btnScreenOff.Enabled = true;
+        _screenOffPending = false;
+    }
+
     private void InitializeComponents()
     {
         Text = "HDR SDR 亮度调节器";
-        ClientSize = new Size(520, 560);
-        MinimumSize = new Size(440, 460);
+        ClientSize = new Size(520, 580);
+        MinimumSize = new Size(440, 480);
         FormBorderStyle = FormBorderStyle.Sizable;
         MaximizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
@@ -216,30 +258,42 @@ public class MainForm : Form
         _btnMin = new Button
         {
             Text = $"最低({CurrentMinBrightness:F1})",
-            Size = new Size(140, 32),
+            Size = new Size(105, 32),
             Font = new Font("Microsoft YaHei UI", 9F),
-            Margin = new Padding(2, 2, 8, 2)
+            Margin = new Padding(2, 2, 6, 2)
         };
         _btnMin.Click += (s, e) => SetBrightness(CurrentMinBrightness);
 
         _btnDefault = new Button
         {
             Text = $"默认({CurrentDefaultBrightness:F1})",
-            Size = new Size(140, 32),
+            Size = new Size(105, 32),
             Font = new Font("Microsoft YaHei UI", 9F),
-            Margin = new Padding(2, 2, 8, 2)
+            Margin = new Padding(2, 2, 6, 2)
         };
         _btnDefault.Click += (s, e) => SetBrightness(CurrentDefaultBrightness);
 
         _btnMax = new Button
         {
             Text = $"最高({CurrentMaxBrightness:F1})",
-            Size = new Size(140, 32),
-            Font = new Font("Microsoft YaHei UI", 9F)
+            Size = new Size(105, 32),
+            Font = new Font("Microsoft YaHei UI", 9F),
+            Margin = new Padding(2, 2, 6, 2)
         };
         _btnMax.Click += (s, e) => SetBrightness(CurrentMaxBrightness);
 
-        rowQuick.Controls.AddRange(new Control[] { _btnMin, _btnDefault, _btnMax });
+        _btnScreenOff = new Button
+        {
+            Text = "息屏",
+            Size = new Size(105, 32),
+            Font = new Font("Microsoft YaHei UI", 9F),
+            BackColor = Color.FromArgb(45, 45, 45),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat
+        };
+        _btnScreenOff.Click += (s, e) => TurnOffScreen();
+
+        rowQuick.Controls.AddRange(new Control[] { _btnMin, _btnDefault, _btnMax, _btnScreenOff });
 
         var rowExact = NewFlow();
         var lblExact = new Label
@@ -563,7 +617,10 @@ public class MainForm : Form
         double brightness = SliderToBrightness(_trackBar.Value);
         _lblValue.Text = FormatBrightness(brightness);
         _lblNits.Text = FormatNits(brightness);
-        _nudExact.Value = (decimal)Math.Round(brightness, 1) * 10;
+
+        var rounded = (decimal)Math.Round(brightness, 1) * 10;
+        if (rounded >= _nudExact.Minimum && rounded <= _nudExact.Maximum)
+            _nudExact.Value = rounded;
 
         if (_chkLive.Checked)
         {
@@ -577,7 +634,11 @@ public class MainForm : Form
         _trackBar.Value = BrightnessToSlider(brightness);
         _lblValue.Text = FormatBrightness(brightness);
         _lblNits.Text = FormatNits(brightness);
-        _nudExact.Value = (decimal)Math.Round(brightness, 1) * 10;
+
+        var rounded = (decimal)Math.Round(brightness, 1) * 10;
+        if (rounded >= _nudExact.Minimum && rounded <= _nudExact.Maximum)
+            _nudExact.Value = rounded;
+
         ApplyBrightness(brightness);
     }
 
@@ -589,7 +650,10 @@ public class MainForm : Form
         _trackBar.ValueChanged += TrackBar_ValueChanged;
         _lblValue.Text = FormatBrightness(brightness);
         _lblNits.Text = FormatNits(brightness);
-        _nudExact.Value = (decimal)Math.Round(brightness, 1) * 10;
+
+        var rounded = (decimal)Math.Round(brightness, 1) * 10;
+        if (rounded >= _nudExact.Minimum && rounded <= _nudExact.Maximum)
+            _nudExact.Value = rounded;
     }
 
     private void ApplyBrightness(double brightness)
