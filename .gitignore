@@ -1,5 +1,6 @@
 bin/
 obj/
 publish/
+publish-selfcontained/
 *.user
 .vs/
