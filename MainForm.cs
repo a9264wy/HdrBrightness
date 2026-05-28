@@ -94,7 +94,7 @@ public class MainForm : Form
 
         _notifyIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application,
             Text = "HDR 亮度调节",
             Visible = true,
             ContextMenuStrip = _trayMenu
