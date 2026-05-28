@@ -89,6 +89,12 @@ dotnet publish -c Release -r win-x64 -p:PublishSingleFile=true -p:SelfContained=
 
 ## 更新日志
 
+### v1.2.0
+
+- 🎛️ 统一滑块量程与设置范围，TrackBar Minimum/Maximum 直接映射亮度值
+- 🔢 统一所有数值输入框显示格式（2位小数），消除 1.10 vs 11.0 的不一致
+- 🐛 修复 TrackBar 初始值低于 Minimum 导致崩溃的问题
+
 ### v1.1.0
 
 - 🐛 修复启动时无法读取当前 SDR 亮度的问题（结构体对齐错误）
